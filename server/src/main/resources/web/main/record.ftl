@@ -41,10 +41,10 @@
                     你可以先看最新版本的升级重点，再顺着时间轴继续了解历史版本细节。
                 </p>
                 <div class="release-badge-row">
-                    <span class="tag highlight">最新版本 v5.0.2</span>
-                    <span class="tag brand">发布日期 2026-08-14</span>
+                    <span class="tag highlight">最新版本 v5.0.3</span>
+                    <span class="tag brand">发布日期 2026-08-27</span>
                     <span class="tag warn">JDK 21+ 强制要求</span>
-                    <span class="tag">安全补丁 / HTML、文件删除、PDF 转图修复</span>
+                    <span class="tag">预览兼容 / HTML 依赖 / Office 密码处理</span>
                 </div>
             </div>
         </section>
@@ -52,6 +52,26 @@
         <section class="release-section">
             <div class="timeline-year">2026</div>
             <div class="timeline-list">
+                <article class="release-card">
+                    <h3>v5.0.3</h3>
+                    <div class="release-meta">
+                        <span class="tag brand">2026-08-27</span>
+                        <span class="tag highlight">最新稳定版本</span>
+                        <span class="tag warn">升级需 JDK 21+</span>
+                    </div>
+                    <div class="release-columns">
+                        <div class="release-group">
+                            <h4>修复</h4>
+                            <ul class="release-list">
+                                <li>修复带查询参数的存储地址无法正确识别文件名与扩展名的问题。</li>
+                                <li>增强 Office 密码保护检测与 PDF 导出密码处理。</li>
+                                <li>增加 HTML 脚本、样式依赖检查，并优化不可预览时的用户提示。</li>
+                                <li>修复 LuckyExcel 无法解析关系根标签属性前换行等合法 XML 空白的问题。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+
                 <article class="release-card">
                     <h3>v5.0.2</h3>
                     <div class="release-meta">
