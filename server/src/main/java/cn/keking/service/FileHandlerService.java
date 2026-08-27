@@ -215,6 +215,34 @@ public class FileHandlerService {
     }
 
     /**
+     * 从 URL 路径取文件名；若路径末尾无扩展名（如 .../preview?file_path=.../a.docx），则从常见查询参数中解析真实文件名。
+     */
+    private String deriveFileNameFromUrl(String url) {
+        String fromPath = WebUtils.getFileNameFromURL(url);
+        if (fromPath.lastIndexOf('.') > 0) {
+            return fromPath;
+        }
+        String fromQuery = WebUtils.getUrlParameterReg(url, "file_path");
+        if (!StringUtils.hasText(fromQuery)) {
+            fromQuery = WebUtils.getUrlParameterReg(url, "filepath");
+        }
+        if (!StringUtils.hasText(fromQuery)) {
+            return fromPath;
+        }
+        try {
+            fromQuery = URLDecoder.decode(fromQuery, uriEncoding);
+        } catch (UnsupportedEncodingException e) {
+            logger.warn("解析 file_path 参数失败: {}", fromQuery, e);
+        }
+        int slash = fromQuery.lastIndexOf('/');
+        String candidate = slash >= 0 ? fromQuery.substring(slash + 1) : fromQuery;
+        if (candidate.lastIndexOf('.') > 0) {
+            return candidate;
+        }
+        return fromPath;
+    }
+
+    /**
      * 获取文件属性
      *
      * @param url url
@@ -237,9 +265,9 @@ public class FileHandlerService {
             // 移除fullfilename参数
             url = WebUtils.clearFullfilenameParam(url);
         } else {
-            originFileName = WebUtils.getFileNameFromURL(url);
-            type = FileType.typeFromUrl(url);
-            suffix = WebUtils.suffixFromUrl(url);
+            originFileName = deriveFileNameFromUrl(url);
+            type = FileType.typeFromFileName(originFileName);
+            suffix = KkFileUtils.suffixFromFileName(originFileName);
         }
         boolean isCompressFile = !ObjectUtils.isEmpty(compressFileKey);
         if (isCompressFile) {  //判断是否使用特定压缩包符号
@@ -272,12 +300,13 @@ public class FileHandlerService {
             throw new IllegalArgumentException("文件名超过系统限制");
         }
         boolean isHtmlView = suffix.equalsIgnoreCase("xls") || suffix.equalsIgnoreCase("xlsx") || suffix.equalsIgnoreCase("csv") || suffix.equalsIgnoreCase("xlsm") || suffix.equalsIgnoreCase("xlt") || suffix.equalsIgnoreCase("xltm") || suffix.equalsIgnoreCase("et") || suffix.equalsIgnoreCase("ett") || suffix.equalsIgnoreCase("xlam");
-        String cacheFilePrefixName = null;
-        try {
-            cacheFilePrefixName = originFileName.substring(0, originFileName.lastIndexOf(".")) + suffix + "."; //这里统一文件名处理 下面更具类型 各自添加后缀
-        } catch (Exception e) {
-            logger.error("获取文件名后缀错误：", e);
-            //  e.printStackTrace();
+        int lastDotInOrigin = originFileName.lastIndexOf('.');
+        String cacheFilePrefixName;
+        if (lastDotInOrigin < 1) {
+            logger.warn("文件名缺少扩展名，缓存前缀使用「{}.」: url={}", originFileName, url);
+            cacheFilePrefixName = originFileName + ".";
+        } else {
+            cacheFilePrefixName = originFileName.substring(0, lastDotInOrigin) + suffix + ".";
         }
         String cacheFileName = this.getCacheFileName(type, originFileName, cacheFilePrefixName, isHtmlView, isCompressFile);
         outFilePath = fileDir + cacheFileName;
