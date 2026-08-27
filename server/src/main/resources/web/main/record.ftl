@@ -41,7 +41,7 @@
                     你可以先看最新版本的升级重点，再顺着时间轴继续了解历史版本细节。
                 </p>
                 <div class="release-badge-row">
-                    <span class="tag highlight">最新版本 v5.0.3</span>
+                    <span class="tag highlight">最新版本 v5.0.4</span>
                     <span class="tag brand">发布日期 2026-08-27</span>
                     <span class="tag warn">JDK 21+ 强制要求</span>
                     <span class="tag">预览兼容 / HTML 依赖 / Office 密码处理</span>
@@ -53,7 +53,7 @@
             <div class="timeline-year">2026</div>
             <div class="timeline-list">
                 <article class="release-card">
-                    <h3>v5.0.3</h3>
+                    <h3>v5.0.4</h3>
                     <div class="release-meta">
                         <span class="tag brand">2026-08-27</span>
                         <span class="tag highlight">最新稳定版本</span>
