@@ -38,7 +38,10 @@ public class OfficeToPdfService {
         }
         LocalConverter.Builder builder;
         Map<String, Object> filterData = new HashMap<>();
-        filterData.put("EncryptFile", true);
+        String pdfPassword = fileAttribute.getFilePassword();
+        boolean encryptPdf = ConfigConstants.getOfficeDocumentOpenPasswords()
+                && StringUtils.isNotBlank(pdfPassword);
+        filterData.put("EncryptFile", encryptPdf);
         if(!ConfigConstants.getOfficePageRange().equals("false")){
             filterData.put("PageRange", ConfigConstants.getOfficePageRange()); //限制页面
         }
@@ -53,8 +56,8 @@ public class OfficeToPdfService {
         if(ConfigConstants.getOfficeExportNotes()){
             filterData.put("ExportNotes", true); //批注作为PDF的注释
         }
-        if(ConfigConstants.getOfficeDocumentOpenPasswords()){
-            filterData.put("DocumentOpenPassword", fileAttribute.getFilePassword()); //给PDF添加密码
+        if(encryptPdf){
+            filterData.put("DocumentOpenPassword", pdfPassword); //给PDF添加密码
         }
         Map<String, Object> customProperties = new HashMap<>();
         customProperties.put("FilterData", filterData);

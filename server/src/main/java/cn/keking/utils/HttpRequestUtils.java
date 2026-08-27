@@ -23,12 +23,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RequestCallback;
 import org.springframework.web.client.RestTemplate;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -312,6 +315,50 @@ public class HttpRequestUtils {
             throw e;
         }
         // 注意：不再关闭HttpClient，由连接池管理
+    }
+
+    /**
+     * 探测 HTTP(S) 资源是否可读：优先 HEAD；明确 404/410 为失败；其余非成功状态再尝试 GET（兼容未实现 HEAD 的服务端）。
+     */
+    public static boolean probeUrlReadable(String urlString, FileAttribute fileAttribute) {
+        if (!StringUtils.hasText(urlString)) {
+            return false;
+        }
+        try {
+            CloseableHttpClient httpClient = createConfiguredHttpClient();
+            HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+            factory.setHttpClient(httpClient);
+            factory.setConnectTimeout(10000);
+            factory.setReadTimeout(15000);
+            RestTemplate rt = new RestTemplate(factory);
+            rt.setErrorHandler(new DefaultResponseErrorHandler() {
+                @Override
+                public boolean hasError(ClientHttpResponse response) throws IOException {
+                    return false;
+                }
+            });
+            URI uri = URI.create(urlString);
+            RequestCallback requestCallback = createRequestCallback(urlString, fileAttribute);
+            Integer headStatus = null;
+            try {
+                headStatus = rt.execute(uri, HttpMethod.HEAD, requestCallback, response ->
+                        response.getStatusCode().value());
+            } catch (Exception ex) {
+                logger.debug("HEAD 探测失败，将尝试 GET url={}", urlString, ex);
+            }
+            if (headStatus != null && headStatus >= 200 && headStatus < 400) {
+                return true;
+            }
+            if (headStatus != null && (headStatus == 404 || headStatus == 410)) {
+                return false;
+            }
+            Integer getStatus = rt.execute(uri, HttpMethod.GET, requestCallback, response ->
+                    response.getStatusCode().value());
+            return getStatus != null && getStatus >= 200 && getStatus < 400;
+        } catch (Exception e) {
+            logger.debug("probeUrlReadable 失败 url={}", urlString, e);
+            return false;
+        }
     }
 
     /**

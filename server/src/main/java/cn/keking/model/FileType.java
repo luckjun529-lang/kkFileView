@@ -53,7 +53,7 @@ public enum FileType {
     private static final String[] SVG_TYPES = {"svg"};
     private static final String[] CAD_TYPES = {"dwg", "dxf", "dwf", "iges", "igs", "dwt", "dng", "ifc", "dwfx", "stl", "cf2", "plt"};
     private static final String[] SSIM_TEXT_TYPES = ConfigConstants.getSimText();
-    private static final String[] CODES = {"java", "c", "php", "go", "python", "py", "js", "html", "ftl", "css", "lua", "sh", "rb", "yaml", "yml", "h", "cpp", "cs", "aspx", "jsp", "sql"};
+    private static final String[] CODES = {"java", "c", "php", "go", "python", "py", "js", "html", "htm", "shtml", "ftl", "css", "lua", "sh", "rb", "yaml", "yml", "h", "cpp", "cs", "aspx", "jsp", "sql"};
     private static final String[] MEDIA_TYPES = ConfigConstants.getMedia();
     public static final String[] MEDIA_CONVERT_TYPES = ConfigConstants.getConvertMedias();
     private static final Map<String, FileType> FILE_TYPE_MAPPER = new HashMap<>();

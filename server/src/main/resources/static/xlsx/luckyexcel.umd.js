@@ -4568,12 +4568,12 @@ var xmloperation = /** @class */function () {
         tagsRegTxt = "";
       for (var i = 0; i < tags.length; i++) {
         var t = tags[i];
-        tagsRegTxt += "|<" + t + " [^>]+?[^/]>[\\s\\S]*?</" + t + ">|<" + t + " [^>]+?/>|<" + t + ">[\\s\\S]*?</" + t + ">|<" + t + "/>";
+        tagsRegTxt += "|<" + t + "\\s+[^>]+?[^/]>[\\s\\S]*?</" + t + ">|<" + t + "\\s+[^>]+?/>|<" + t + ">[\\s\\S]*?</" + t + ">|<" + t + "/>";
       }
       tagsRegTxt = tagsRegTxt.substr(1, tagsRegTxt.length);
       readTagReg = new RegExp(tagsRegTxt, "g");
     } else {
-      readTagReg = new RegExp("<" + tag + " [^>]+?[^/]>[\\s\\S]*?</" + tag + ">|<" + tag + " [^>]+?/>|<" + tag + ">[\\s\\S]*?</" + tag + ">|<" + tag + "/>", "g");
+      readTagReg = new RegExp("<" + tag + "\\s+[^>]+?[^/]>[\\s\\S]*?</" + tag + ">|<" + tag + "\\s+[^>]+?/>|<" + tag + ">[\\s\\S]*?</" + tag + ">|<" + tag + "/>", "g");
     }
     var ret = file.match(readTagReg);
     if (ret == null) {
@@ -4698,7 +4698,7 @@ var Element = /** @class */function (_super) {
       this.container = str;
     } else {
       var firstTag = this.getFirstTag();
-      var firstTagReg = new RegExp("(<" + firstTag + " [^>]+?[^/]>)([\\s\\S]*?)</" + firstTag + ">|(<" + firstTag + ">)([\\s\\S]*?)</" + firstTag + ">", "g");
+      var firstTagReg = new RegExp("(<" + firstTag + "\\s+[^>]+?[^/]>)([\\s\\S]*?)</" + firstTag + ">|(<" + firstTag + ">)([\\s\\S]*?)</" + firstTag + ">", "g");
       var result = firstTagReg.exec(str);
       if (result != null) {
         if (result[1] != null) {
@@ -4716,12 +4716,8 @@ var Element = /** @class */function (_super) {
   */
   Element.prototype.getFirstTag = function () {
     var str = this.elementString;
-    var firstTag = str.substr(0, str.indexOf(' '));
-    if (firstTag == "" || firstTag.indexOf(">") > -1) {
-      firstTag = str.substr(0, str.indexOf('>'));
-    }
-    firstTag = firstTag.substr(1, firstTag.length);
-    return firstTag;
+    var firstTag = /^<([^\s/>]+)/.exec(str);
+    return firstTag == null ? "" : firstTag[1];
   };
   return Element;
 }(xmloperation);

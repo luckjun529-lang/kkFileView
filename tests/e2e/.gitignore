@@ -6,4 +6,5 @@ __pycache__/
 fixtures/archive-tmp/
 fixtures/sample.docx
 fixtures/sample.xlsx
+fixtures/sample-rel-whitespace.xlsx
 fixtures/sample.pptx

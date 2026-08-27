@@ -45,6 +45,7 @@ test.beforeAll(async () => {
     'sample.pdf',
     'sample.docx',
     'sample.xlsx',
+    'sample-rel-whitespace.xlsx',
     'sample.pptx',
     'sample.zip',
     'sample.tar',
@@ -118,6 +119,17 @@ test('10 docx preview', async ({ request }) => {
 test('11 xlsx preview', async ({ request }) => {
   const body = await openPreviewBody(request, `${fixtureBase}/sample.xlsx`, true);
   expectAnyContains(body, ['sample.xlsx预览', 'xlsx', 'office'], 'xlsx preview');
+});
+
+test('11b xlsx preview accepts whitespace before relationship attributes', async ({ page }) => {
+  const query = new URLSearchParams({
+    url: b64(`${fixtureBase}/sample-rel-whitespace.xlsx`),
+    officePreviewType: 'xlsx',
+  });
+
+  await page.goto(`/onlinePreview?${query.toString()}`);
+  await expect(page.locator('#loading-overlay')).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('#error-message')).toBeHidden();
 });
 
 test('12 pptx preview', async ({ request }) => {
