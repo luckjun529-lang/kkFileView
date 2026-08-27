@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from docx import Document
 from openpyxl import Workbook
@@ -23,6 +24,28 @@ _ws["B1"] = "value"
 _ws["A2"] = "kkFileView"
 _ws["B2"] = 2
 _wb.save(fixtures / "sample.xlsx")
+
+# OOXML allows any XML whitespace between a tag name and its attributes.
+# Keep a regression fixture whose relationship root uses a newline there,
+# matching files that previously produced an empty LuckyExcel workbook.
+with ZipFile(fixtures / "sample.xlsx", "r") as source, ZipFile(
+    fixtures / "sample-rel-whitespace.xlsx", "w", ZIP_DEFLATED
+) as target:
+    relationship_root_updated = False
+    for entry in source.infolist():
+        data = source.read(entry.filename)
+        if entry.filename == "xl/_rels/workbook.xml.rels":
+            updated = data.replace(
+                b"<Relationships xmlns=",
+                b"<Relationships\n    xmlns=",
+                1,
+            )
+            relationship_root_updated = updated != data
+            data = updated
+        target.writestr(entry, data)
+
+if not relationship_root_updated:
+    raise RuntimeError("failed to create the relationship-root whitespace fixture")
 
 # PPTX
 _prs = Presentation()
