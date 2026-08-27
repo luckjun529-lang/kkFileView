@@ -20,7 +20,10 @@ public class CodeFilePreviewImpl implements FilePreview {
 
     @Override
     public String filePreviewHandle(String url, Model model, FileAttribute fileAttribute) {
-         filePreviewHandle.filePreviewHandle(url, model, fileAttribute);
+        String preview = filePreviewHandle.filePreviewHandle(url, model, fileAttribute);
+        if (NOT_SUPPORTED_FILE_PAGE.equals(preview)) {
+            return preview;
+        }
         String suffix = fileAttribute.getSuffix();
         boolean isHtmlFile = suffix.equalsIgnoreCase("htm") || suffix.equalsIgnoreCase("html") || suffix.equalsIgnoreCase("shtml");
         model.addAttribute("isHtmlFile", isHtmlFile);

@@ -7,6 +7,7 @@ import cn.keking.service.FileHandlerService;
 import cn.keking.service.FilePreview;
 import cn.keking.utils.DownloadUtils;
 import cn.keking.utils.EncodingDetects;
+import cn.keking.utils.HtmlReferencedResourceChecker;
 import cn.keking.utils.KkFileUtils;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
@@ -54,21 +55,57 @@ public class SimTextFilePreviewImpl implements FilePreview {
                 fileHandlerService.addConvertedFile(fileName, filePath);  //加入缓存
             }
             try {
-                String  fileData = HtmlUtils.htmlEscape(textData(filePath,fileName));
+                String raw = textData(filePath, fileName);
+                if (raw == null) {
+                    raw = "";
+                }
+                String htmlErr = checkHtmlDependencyResources(raw, fileAttribute);
+                if (htmlErr != null) {
+                    return otherFilePreview.notSupportedFile(model, fileAttribute, htmlErr);
+                }
+                String fileData = HtmlUtils.htmlEscape(raw);
                 model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes(StandardCharsets.UTF_8)));
             } catch (IOException e) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, e.getLocalizedMessage());
             }
             return TXT_FILE_PREVIEW_PAGE;
         }
-        String  fileData = null;
+        filePath = fileHandlerService.getConvertedFile(fileName);
+        if (filePath == null) {
+            return otherFilePreview.notSupportedFile(model, fileAttribute, "预览缓存异常，请刷新后重试");
+        }
+        String fileData;
         try {
-            fileData = HtmlUtils.htmlEscape(textData(filePath,fileName));
+            String raw = textData(filePath, fileName);
+            if (raw == null) {
+                raw = "";
+            }
+            String htmlErr = checkHtmlDependencyResources(raw, fileAttribute);
+            if (htmlErr != null) {
+                return otherFilePreview.notSupportedFile(model, fileAttribute, htmlErr);
+            }
+            fileData = HtmlUtils.htmlEscape(raw);
         } catch (IOException e) {
             LOGGER.error("读取文本文件失败: {}", filePath, e);
+            fileData = HtmlUtils.htmlEscape("");
         }
         model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes(StandardCharsets.UTF_8)));
         return TXT_FILE_PREVIEW_PAGE;
+    }
+
+    private static String checkHtmlDependencyResources(String rawContent, FileAttribute fileAttribute) {
+        if (rawContent == null || !isWebHtmlSuffix(fileAttribute.getSuffix())) {
+            return null;
+        }
+        return HtmlReferencedResourceChecker.checkRequiredResources(rawContent, fileAttribute.getUrl(), fileAttribute);
+    }
+
+    private static boolean isWebHtmlSuffix(String suffix) {
+        if (suffix == null) {
+            return false;
+        }
+        String s = suffix.toLowerCase();
+        return "html".equals(s) || "htm".equals(s) || "shtml".equals(s);
     }
 
     private String textData(String filePath,String fileName) throws IOException {
