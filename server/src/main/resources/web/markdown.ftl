@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/index.css"/>
     <script src="bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
     <script src="js/marked.min.js" type="text/javascript"></script>
+    <script src="js/purify.min.js" type="text/javascript"></script>
     <script src="js/base64.min.js" type="text/javascript"></script>
     <script src="js/codemirror.js" type="text/javascript"></script>
 </head>
@@ -63,11 +64,56 @@
         viewportMargin: Infinity
     });
 	
-	 var kkkeyword = '${highlightall}';
+    var kkkeyword = '${highlightall?js_string}';
+    var markdownPreviewContent;
+    var markdownSourceContent;
+
+    // Preserve basic rich-text formatting without allowing document CSS to alter the viewer.
+    var markdownSanitizerOptions = {
+        ALLOWED_TAGS: [
+            'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'blockquote', 'pre', 'code', 'kbd', 'samp', 'ul', 'ol', 'li',
+            'strong', 'b', 'em', 'i', 's', 'del', 'u', 'span', 'div',
+            'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
+            'a', 'img', 'sub', 'sup', 'details', 'summary', 'dl', 'dt', 'dd', 'input'
+        ],
+        ALLOWED_ATTR: [
+            'href', 'src', 'alt', 'title', 'class', 'style', 'align',
+            'colspan', 'rowspan', 'start', 'reversed', 'open', 'type', 'checked', 'disabled'
+        ],
+        ALLOW_DATA_ATTR: false,
+        ALLOW_ARIA_ATTR: false,
+        RETURN_DOM_FRAGMENT: true
+    };
+    DOMPurify.addHook('uponSanitizeAttribute', function(node, data) {
+        if (data.attrName === 'class') {
+            var tag = node.nodeName.toLowerCase();
+            data.attrValue = data.attrValue.split(/\s+/).filter(function(name) {
+                return (tag === 'code' && /^language-[a-z0-9_-]+$/i.test(name))
+                    || (tag === 'li' && name === 'task-list-item')
+                    || ((tag === 'ul' || tag === 'ol') && name === 'contains-task-list');
+            }).join(' ');
+            if (!data.attrValue) data.keepAttr = false;
+            return;
+        }
+        if (data.attrName !== 'style') return;
+        var originalStyle = document.createElement('span').style;
+        var safeStyle = document.createElement('span').style;
+        originalStyle.cssText = data.attrValue;
+        ['color', 'background-color', 'font-weight', 'font-style', 'text-decoration', 'text-align']
+            .forEach(function(property) {
+                var value = originalStyle.getPropertyValue(property);
+                if (value && !/(?:url|expression|var)\s*\(/i.test(value)) {
+                    safeStyle.setProperty(property, value);
+                }
+            });
+        data.attrValue = safeStyle.cssText;
+        if (!data.attrValue) data.keepAttr = false;
+    });
     
     // 初始化目录
     function initTOC() {
-        let html = "";
+        var list = $("#directory ul").empty();
         let index = 0;
         
         // 从预览内容中提取标题
@@ -79,13 +125,12 @@
             if (text.length > 50) {
                 text = text.substring(0, 50) + "...";
             }
-            html += '<li class="li-h' + level + '"><a href="#' + id + '" title="' + $(this).text() + '">' + text + '</a></li>';
+            var link = $("<a>").attr({href: '#' + id, title: $(this).text()}).text(text);
+            list.append($("<li>").addClass('li-h' + level).append(link));
         });
         
-        $("#directory ul").html(html);
-        
         // 显示/隐藏空目录提示
-        if (html === "") {
+        if (!list.children().length) {
             $("#directory .empty-toc").show();
             $("#directory ul").hide();
         } else {
@@ -102,29 +147,38 @@
         }, 100);
     }
     
-    // 安全HTML转义函数
-    function htmlEscape(str) {
-        if (!str) return "";
-        return str
-           
-            .replace(/</g, "&lt;")
- 
-            .replace(/javascript/gi, "javascript ");
+    // Both initial loading and editor changes use the same sanitized DOM pipeline.
+    function renderMarkdown(rawMarkdown) {
+        if (!DOMPurify.isSupported) {
+            throw new Error('当前浏览器不支持安全的 Markdown 预览');
+        }
+        markdownPreviewContent = DOMPurify.sanitize(marked.parse(rawMarkdown), markdownSanitizerOptions);
+        markdownPreviewContent.querySelectorAll('input').forEach(function(input) {
+            if (input.type !== 'checkbox') {
+                input.remove();
+            } else {
+                input.disabled = true;
+            }
+        });
+        highlightKeyword(markdownPreviewContent, kkkeyword, true);
+
+        // Source mode always displays the original text, including literal HTML tags.
+        markdownSourceContent = document.createDocumentFragment();
+        var sourceWrapper = document.createElement('div');
+        sourceWrapper.style.width = '100%';
+        var sourcePre = document.createElement('pre');
+        sourcePre.textContent = rawMarkdown;
+        sourceWrapper.appendChild(sourcePre);
+        markdownSourceContent.appendChild(sourceWrapper);
+        highlightKeyword(markdownSourceContent, kkkeyword, false);
+        switchView($("#preview_btn").hasClass('active') ? 'preview' : 'source');
     }
     
     // 加载markdown内容
     function loadMarkdown() {
         try {
             var textData = Base64.decode($("#textData").val());
-            textData = htmlEscape(textData);
-            
-         
-           // 应用关键字高亮
-const highlightedText = highlightKeyword(textData, kkkeyword);
-window.textPreData = "<div style='width:100%;'><pre>" + highlightedText + "</pre></div>";
-window.textMarkdownData = marked.parse(highlightedText);
-            
-            $("#markdown").html(window.textMarkdownData);
+            renderMarkdown(textData);
             editor.setValue(textData);
             
             // 更新编辑器容器宽度
@@ -136,25 +190,54 @@ window.textMarkdownData = marked.parse(highlightedText);
                 editor.setSize('100%', editorHeight);
             }, 100);
             
-            // 初始化目录
-            initTOC();
-            
         } catch (e) {
             console.error("加载内容失败:", e);
-            $("#markdown").html("<div class='alert alert-danger' style='padding:15px;border-radius:8px;width:100%;'>加载内容失败: " + e.message + "</div>");
+            var errorMessage = $("<div>").addClass('alert alert-danger')
+                .css({padding: '15px', 'border-radius': '8px', width: '100%'})
+                .text('加载内容失败: ' + e.message);
+            $("#markdown").empty().append(errorMessage);
         }
     }
 	
 	
 
 
-function highlightKeyword(text, keyword) {
-    if (!keyword || keyword.trim() === '') return text;
+function highlightKeyword(root, keyword, skipCode) {
+    if (!keyword || keyword.trim() === '') return;
     
     const escapedKeyword = keyword.replace(/[.*+?^${'$'}{}()|[\]\\]/g, '\\$&');
     const regex = new RegExp('(' + escapedKeyword + ')', 'gi');
     
-    return text.replace(regex, '<span class="highlight-keyword">$1</span>');
+    // Match text nodes only: never rewrite HTML attributes, links or Markdown syntax.
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: function(node) {
+            if (skipCode && node.parentElement && node.parentElement.closest('pre, code')) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        }
+    });
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function(node) {
+        var text = node.nodeValue;
+        var fragment = document.createDocumentFragment();
+        var offset = 0;
+        var match;
+        regex.lastIndex = 0;
+        while ((match = regex.exec(text)) !== null) {
+            fragment.appendChild(document.createTextNode(text.slice(offset, match.index)));
+            var highlight = document.createElement('span');
+            highlight.className = 'highlight-keyword';
+            highlight.textContent = match[0];
+            fragment.appendChild(highlight);
+            offset = match.index + match[0].length;
+        }
+        if (offset) {
+            fragment.appendChild(document.createTextNode(text.slice(offset)));
+            node.parentNode.replaceChild(fragment, node);
+        }
+    });
 }
     
     // 切换视图
@@ -162,12 +245,12 @@ function highlightKeyword(text, keyword) {
         if (mode === 'preview') {
             $("#preview_btn").addClass('active');
             $("#source_btn").removeClass('active');
-            $("#markdown").html(window.textMarkdownData);
+            $("#markdown").empty().append(markdownPreviewContent.cloneNode(true));
             initTOC();
         } else {
             $("#source_btn").addClass('active');
             $("#preview_btn").removeClass('active');
-            $("#markdown").html(window.textPreData);
+            $("#markdown").empty().append(markdownSourceContent.cloneNode(true));
             $("#directory .empty-toc").show();
             $("#directory ul").hide();
             
@@ -197,20 +280,9 @@ function highlightKeyword(text, keyword) {
         loadMarkdown();
         
         // 监听编辑器变化
-      editor.on('change', function(cm) {
-    // 更新预览
-    var content = cm.getValue();
-    // 应用关键字高亮
-    const highlightedContent = highlightKeyword(content, kkkeyword);
-    window.textPreData = "<div style='width:100%;'><pre>" + highlightedContent + "</pre></div>";
-    window.textMarkdownData = marked.parse(highlightedContent);
-    
-    // 如果当前是预览模式，更新预览内容
-    if ($("#preview_btn").hasClass('active')) {
-        $("#markdown").html(window.textMarkdownData);
-        initTOC();
-    }
-});
+        editor.on('change', function(cm) {
+            renderMarkdown(cm.getValue());
+        });
         
         // 绑定视图切换事件
         $("#preview_btn").click(function() {

@@ -2,6 +2,7 @@ package cn.keking.service.impl;
 
 import cn.keking.config.ConfigConstants;
 import cn.keking.model.FileAttribute;
+import cn.keking.model.FileType;
 import cn.keking.model.ReturnResponse;
 import cn.keking.service.FileHandlerService;
 import cn.keking.service.FilePreview;
@@ -63,7 +64,7 @@ public class SimTextFilePreviewImpl implements FilePreview {
                 if (htmlErr != null) {
                     return otherFilePreview.notSupportedFile(model, fileAttribute, htmlErr);
                 }
-                String fileData = HtmlUtils.htmlEscape(raw);
+                String fileData = preparePreviewText(raw, fileAttribute);
                 model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes(StandardCharsets.UTF_8)));
             } catch (IOException e) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, e.getLocalizedMessage());
@@ -84,13 +85,19 @@ public class SimTextFilePreviewImpl implements FilePreview {
             if (htmlErr != null) {
                 return otherFilePreview.notSupportedFile(model, fileAttribute, htmlErr);
             }
-            fileData = HtmlUtils.htmlEscape(raw);
+            fileData = preparePreviewText(raw, fileAttribute);
         } catch (IOException e) {
             LOGGER.error("读取文本文件失败: {}", filePath, e);
             fileData = HtmlUtils.htmlEscape("");
         }
         model.addAttribute("textData", Base64.encodeBase64String(fileData.getBytes(StandardCharsets.UTF_8)));
         return TXT_FILE_PREVIEW_PAGE;
+    }
+
+    private static String preparePreviewText(String raw, FileAttribute fileAttribute) {
+        // Markdown needs its original syntax, including embedded HTML and literal entities.
+        // Base64 transports it safely; markdown.ftl sanitizes the parsed HTML before display.
+        return fileAttribute.getType() == FileType.MARKDOWN ? raw : HtmlUtils.htmlEscape(raw);
     }
 
     private static String checkHtmlDependencyResources(String rawContent, FileAttribute fileAttribute) {

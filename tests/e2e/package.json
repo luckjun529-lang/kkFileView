@@ -14,7 +14,9 @@
     "test:smoke": "playwright test specs/preview-smoke.spec.ts",
     "pretest:perf": "npm run gen:all",
     "test:perf": "playwright test specs/perf-smoke.spec.ts",
-    "test:ci": "npm run gen:all && playwright test specs/preview-smoke.spec.ts specs/perf-smoke.spec.ts"
+    "test:markdown": "playwright test specs/markdown-rendering.spec.ts",
+    "test:markdown:backend": "playwright test specs/markdown-backend.spec.ts",
+    "test:ci": "npm run gen:all && playwright test specs/preview-smoke.spec.ts specs/perf-smoke.spec.ts specs/markdown-rendering.spec.ts specs/markdown-backend.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"

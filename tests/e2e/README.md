@@ -5,6 +5,7 @@ This folder contains a first MVP of end-to-end automated tests.
 ## What is covered
 
 - Basic preview smoke checks for common file types (txt/md/json/xml/csv/html/png)
+- Markdown rendering regressions: inline HTML, source view, keyword highlighting, and HTML/CSS sanitization
 - Office Phase-2 smoke checks (docx/xlsx/pptx)
 - Archive smoke checks (zip/tar/tgz/7z/rar)
 - Basic endpoint reachability
@@ -66,4 +67,16 @@ E2E_MAX_PREVIEW_MS=15000 npm run test:perf
 
 # CI-style combined run (single fixture generation)
 E2E_MAX_PREVIEW_MS=20000 npm run test:ci
+```
+
+The Markdown regressions serve the real preview template and bundled static assets through Playwright routes. They require Chromium but no running Java or fixture server:
+
+```bash
+npm run test:markdown
+```
+
+The Java-to-browser Markdown regression uses the running kkFileView and fixture servers from the local setup above. It verifies the actual downloaded and cached response payloads, inline HTML rendering, literal entities, source view, and script filtering:
+
+```bash
+KK_BASE_URL=http://127.0.0.1:8012 FIXTURE_BASE_URL=http://127.0.0.1:18080 npm run test:markdown:backend
 ```
